@@ -1,65 +1,68 @@
-import { useState } from "react"
+import { createContext, useEffect, useReducer } from "react"
 import "./styles.css"
 import { TodoItem } from "./TodoItem"
+import { NewTodoForm } from "./NewTodoForm"
+
+const LOCAL_STORAGE_KEY = "TODOS"
+
+const ACTIONS = {
+  ADD: "ADD",
+  TOGGLE: "TOGGLE",
+  DELETE: "DELETE",
+}
+
+export const TodoContext = createContext()
 
 function App() {
-  const [newTodoName, setNewTodoName] = useState("")
-  const [todos, setTodos] = useState([])
+  const [todos, dispatch] = useReducer(reducer, [], (initialValue) => {
+    const value = localStorage.getItem(LOCAL_STORAGE_KEY)
+    if (value == null) return initialValue
 
-  function addNewTodo() {
-    if (newTodoName === "") return
+    return JSON.parse(value)
+  })
 
-    setTodos(currentTodos => {
-      return [
-        ...currentTodos,
-        { name: newTodoName, completed: false, id: crypto.randomUUID() },
-      ]
-    })
-    setNewTodoName("")
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(todos))
+  }, [todos])
+
+  function reducer(todos, { type, payload }) {
+    switch (type) {
+      case ACTIONS.ADD:
+        return [...todos, { name: payload.name, completed: false, id: crypto.randomUUID() }]
+      case ACTIONS.TOGGLE:
+        return todos.map((todo) => {
+          if (todo.id === payload.todoId) return { ...todo, completed: payload.completed }
+
+          return todo
+        })
+      case ACTIONS.DELETE:
+        return todos.filter((todo) => todo.id !== payload.todoId)
+      default:
+        throw new Error(`No action found for ${type}.`)
+    }
+  }
+
+  function addNewTodo(name) {
+    dispatch({ type: ACTIONS.ADD, payload: { name } })
   }
 
   function toggleTodo(todoId, completed) {
-    setTodos(currentTodos => {
-      return currentTodos.map(todo => {
-        if (todo.id === todoId) return { ...todo, completed }
-
-        return todo
-      })
-    })
+    dispatch({ type: ACTIONS.TOGGLE, payload: { todoId, completed } })
   }
 
   function deleteTodo(todoId) {
-    setTodos(currentTodos => {
-      return currentTodos.filter(todo => todo.id !== todoId)
-    })
+    dispatch({ type: ACTIONS.DELETE, payload: { todoId } })
   }
 
   return (
-    <>
+    <TodoContext.Provider value={{ todos, addNewTodo, toggleTodo, deleteTodo }}>
       <ul id="list">
-        {todos.map(todo => {
-          return (
-            <TodoItem
-              key={todo.id}
-              {...todo}
-              toggleTodo={toggleTodo}
-              deleteTodo={deleteTodo}
-            />
-          )
+        {todos.map((todo) => {
+          return <TodoItem key={todo.id} {...todo} toggleTodo={toggleTodo} deleteTodo={deleteTodo} />
         })}
       </ul>
-
-      <div id="new-todo-form">
-        <label htmlFor="todo-input">New Todo</label>
-        <input
-          type="text"
-          id="todo-input"
-          value={newTodoName}
-          onChange={e => setNewTodoName(e.target.value)}
-        />
-        <button onClick={addNewTodo}>Add Todo</button>
-      </div>
-    </>
+      <NewTodoForm />
+    </TodoContext.Provider>
   )
 }
 
