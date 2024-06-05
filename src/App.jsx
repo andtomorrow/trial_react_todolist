@@ -11,6 +11,7 @@ const ACTIONS = {
   ADD: "ADD",
   TOGGLE: "TOGGLE",
   DELETE: "DELETE",
+  UPDATE: "UPDATE",
 }
 
 function reducer(todos, { type, payload }) {
@@ -25,6 +26,12 @@ function reducer(todos, { type, payload }) {
       })
     case ACTIONS.DELETE:
       return todos.filter((todo) => todo.id !== payload.todoId)
+    case ACTIONS.UPDATE:
+      return todos.map((todo) => {
+        if (todo.id === payload.todoId) return { ...todo, name: payload.newName }
+
+        return todo
+      })
     default:
       throw new Error(`No action found for ${type}.`)
   }
@@ -63,8 +70,12 @@ function App() {
     dispatch({ type: ACTIONS.DELETE, payload: { todoId } })
   }
 
+  function updateTodoName(todoId, newName) {
+    dispatch({ type: ACTIONS.UPDATE, payload: { todoId, newName } })
+  }
+
   return (
-    <TodoContext.Provider value={{ todos: filteredTodos, addNewTodo, toggleTodo, deleteTodo }}>
+    <TodoContext.Provider value={{ todos: filteredTodos, addNewTodo, toggleTodo, deleteTodo, updateTodoName }}>
       <FilterForm filterName={filterName} setFilterName={setFilterName} hideCompletedFilter={hideCompletedFilter} setHideCompletedFilter={setHideCompletedFilter} />
       <TodoList />
       <NewTodoForm />
